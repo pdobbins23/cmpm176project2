@@ -113,6 +113,8 @@ y Y YY
       let player;
       let animTicks;
       let levelSpeed = 1;
+      let combo = 0;
+      let lastCollect = 0;
 
       const floorIndexToY = (i) => 16 + i * 15;
 
@@ -167,6 +169,12 @@ y Y YY
             play("click");
             player.targetFi = player.floorIndex + 1;
           }
+        }
+
+        // end combo if too long since last coin collect
+        if (animTicks - lastCollect > 500) {
+          levelSpeed = 1;
+          combo = 0;
         }
 
         // render player
@@ -294,6 +302,9 @@ y Y YY
               play("coin");
               addScore(1, x, f.y - 5);
               f.bambooXs[i] = -9;
+              combo += 1;
+              levelSpeed = 1 + Math.log(combo);
+              lastCollect = animTicks;
             }
 
             // obstacle collision
