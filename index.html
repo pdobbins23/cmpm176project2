@@ -112,7 +112,7 @@ y Y YY
       /** @type {{pos: Vector, floorIndex: number, targetFi: number }} */
       let player;
       let animTicks;
-      let levelSpeed = 5;
+      let levelSpeed = 1;
 
       const floorIndexToY = (i) => 16 + i * 15;
 
@@ -147,7 +147,9 @@ y Y YY
         if (player.targetFi != null) {
           const ty = floorIndexToY(player.targetFi);
           const vy = ty > player.pos.y ? 1 : -1;
+
           player.pos.y += vy * difficulty * 3;
+
           if ((player.pos.y - ty) * vy > 0) {
             player.pos.y = ty;
             player.floorIndex = player.targetFi;
@@ -176,6 +178,7 @@ y Y YY
 
         const scr = difficulty;
 
+        // spawn boins
         nextBambooDist -= scr;
 
         if (nextBambooDist < 0) {
@@ -193,18 +196,24 @@ y Y YY
           }
         }
 
+        // spawn skulls
         nextSkullDist -= scr;
 
         if (nextSkullDist < 0) {
           const fi = rndi(floors.length);
 
+          // pick random direction
+          const dir = rndi(0, 1);
+          const moveSpeed = rnds(1, 2);
+
           if (floors[fi].nextHoleDist > 9 && nextBambooDist > 9) {
-            floors[fi].skullXs.push(209);
+            floors[fi].skullXs.push({ x: 209, dir, moveSpeed });
           }
 
           nextSkullDist += rnd(30, 50);
         }
 
+        // spawn power-ups
         nextPowDist -= scr;
 
         if (nextPowDist < 0) {
@@ -254,12 +263,41 @@ y Y YY
           color("black");
           remove(f.holeXs, (x) => x < -9);
 
+          // obstacles
+          // NOTE: These must be processed before coins/power-ups in order for collision to work properly
+          f.skullXs.forEach((skull, i) => {
+            // returns collision information
+            const c = char(
+              addWithCharCode("d", floor(animTicks / 15) % 4),
+              skull.x,
+              f.y - 5,
+            ).isColliding.char;
+
+            // player collision
+            if (c.a || c.b) {
+              // play explosion sound and end game
+              play("explosion");
+              end();
+            }
+
+            const movement = (skull.dir == 0 ? -1 : 1) * skull.moveSpeed;
+
+            f.skullXs[i].x -= scr * levelSpeed + movement;
+          });
+
           // coins
           f.bambooXs.forEach((x, i) => {
             const c = char("c", x, f.y - 5).isColliding.char;
+
+            // player collision
             if (c.a || c.b) {
               play("coin");
               addScore(1, x, f.y - 5);
+              f.bambooXs[i] = -9;
+            }
+
+            // obstacle collision
+            if (c.d || c.e || c.f || c.g) {
               f.bambooXs[i] = -9;
             }
 
@@ -267,19 +305,30 @@ y Y YY
             f.bambooXs[i] -= scr * levelSpeed;
           });
 
+          // if off screen, remove coin
           remove(f.bambooXs, (x) => x < -3);
 
           // power-ups
           f.powXs.forEach((x, i) => {
             const c = char("h", x, f.y - 5).isColliding.char;
+
+            // player collision
             if (c.a || c.b) {
               play("powerUp");
+
               floors.forEach((f) => {
                 f.skullXs.forEach((x) => {
                   f.bambooXs.push(x);
                 });
+
                 f.skullXs = [];
               });
+
+              f.powXs[i] = -9;
+            }
+
+            // obstacle collision
+            if (c.e || c.f || c.g) {
               f.powXs[i] = -9;
             }
 
@@ -287,26 +336,10 @@ y Y YY
             f.powXs[i] -= scr * levelSpeed;
           });
 
+          // if off screen, remove power-up
           remove(f.powXs, (x) => x < -3);
 
-          // obstacles
-          f.skullXs.forEach((x, i) => {
-            const c = char(
-              addWithCharCode("d", floor(animTicks / 15) % 4),
-              x,
-              f.y - 5,
-            ).isColliding.char;
-            if (c.c || c.h) {
-              f.skullXs[i] = -9;
-            }
-            if (c.a || c.b) {
-              play("explosion");
-              end();
-            }
-
-            f.skullXs[i] -= scr * levelSpeed;
-          });
-
+          // if off screen, remove skull
           remove(f.skullXs, (x) => x < -3);
         });
       }
