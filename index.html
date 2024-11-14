@@ -115,6 +115,7 @@ y Y YY
       let levelSpeed = 1;
       let combo = 0;
       let lastCollect = 0;
+      let coinRate = 1;
 
       const floorIndexToY = (i) => 16 + i * 15;
 
@@ -175,6 +176,7 @@ y Y YY
         if (animTicks - lastCollect > 500) {
           levelSpeed = 1;
           combo = 0;
+          coinRate = 1;
         }
 
         // render player
@@ -187,7 +189,7 @@ y Y YY
         const scr = difficulty;
 
         // spawn boins
-        nextBambooDist -= scr;
+        nextBambooDist -= scr * coinRate;
 
         if (nextBambooDist < 0) {
           if (floors[nextBambooFloorIndex].nextHoleDist < 9) {
@@ -286,6 +288,10 @@ y Y YY
               // play explosion sound and end game
               play("explosion");
               end();
+              levelSpeed = 1;
+              combo = 0;
+              lastCollect = 0;
+              coinRate = 1;
             }
 
             const movement = (skull.dir == 0 ? -1 : 1) * skull.moveSpeed;
@@ -305,6 +311,7 @@ y Y YY
               combo += 1;
               levelSpeed = 1 + Math.log(combo);
               lastCollect = animTicks;
+              coinRate *= 1.5;
             }
 
             // obstacle collision
